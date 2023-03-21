@@ -28,6 +28,14 @@ public class PlayerController : UdonSharpBehaviour
     public GameObject DebugLeftHand;
     public GameObject DebugRightHand;
 
+    [Header("Handle Angle PID")]
+    public float pFactor = 33f;
+    public float iFactor = 0;
+    public float dFactor = 0.22f;
+
+    private Vector3 angularCorrectionIntegral;
+    private Vector3 angularCorrectionLastError;
+
 
     void Start()
     {
@@ -69,7 +77,24 @@ public class PlayerController : UdonSharpBehaviour
         rb.MovePosition(DebugLeftHand.transform.position - offset);
 
         // Negate gravity
-        rb.AddForce(Vector3.up * 9.81f * rb.mass, ForceMode.Force);
+        rb.AddForce(-Physics.gravity * rb.mass, ForceMode.Force);
+
+        // Try to correct angular velocity
+        correctAngularVelocity(rb, rb.transform.forward, DebugLeftHand.transform.forward);
+    }
+
+    private void correctAngularVelocity(Rigidbody rb, Vector3 expected, Vector3 current)
+    {
+        var currentError = (current - expected) * -1;
+        var timeFrame = Time.deltaTime;
+
+        angularCorrectionIntegral += currentError * timeFrame;
+        var deriv = (currentError - angularCorrectionLastError) / timeFrame;
+        angularCorrectionLastError = currentError;
+        var correction = currentError * pFactor + angularCorrectionIntegral * iFactor + deriv * dFactor;
+        correction = Vector3.Cross(current, expected) * correction.magnitude;
+        rb.AddTorque(correction);
+        rb.AddTorque(-rb.angularVelocity);
     }
 
     public override void InputGrab(bool value, UdonInputEventArgs args)
