@@ -40,8 +40,10 @@ public class PlayerController : UdonSharpBehaviour
 
     void FixedUpdate()
     {
+        // If player is trying to grab then check cast
         if (LeftHandGrabbed)
         {
+            // get an object or null for the first in range that is valid
             var obj = CastHandRay(DebugLeftHand.transform.position);
             LeftGrabbedObject = obj;
         }
@@ -53,10 +55,20 @@ public class PlayerController : UdonSharpBehaviour
         {
             return;
         }
+
+        // Get the transform (pos/rot) of the object grabbed
         var trans = LeftGrabbedObject.transform;
+
+        // Get the parents rigid body
         var rb = LeftGrabbedObject.transform.root.GetComponent<Rigidbody>();
-        var test = trans.position - rb.transform.position;
-        rb.MovePosition(DebugLeftHand.transform.position - test);
+
+        // Get the offset of the grabbed object and it's parent
+        var offset = trans.position - rb.transform.position;
+
+        // Move the parent so the grabbed part is where the hand is
+        rb.MovePosition(DebugLeftHand.transform.position - offset);
+
+        // Negate gravity
         rb.AddForce(Vector3.up * 9.81f * rb.mass, ForceMode.Force);
     }
 
