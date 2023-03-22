@@ -96,19 +96,8 @@ public class HandController : UdonSharpBehaviour
         rb.AddForce(PIDPosition.CorrectionV3(handPos, point, Time.deltaTime), ForceMode.Acceleration);
 
         // rotation
-        var rotationChange = handRot * Quaternion.Inverse(rb.transform.rotation);
-
-        rotationChange.ToAngleAxis(out float angle, out Vector3 axis);
-
-        if (Mathf.Approximately(angle, 0))
-        {
-            return; // no need
-        }
-
-        angle *= Mathf.Deg2Rad;
-
-        var target = axis * PIDRotation1.CorrectionFloat(0, angle, Time.deltaTime);
-        rb.AddTorque(target, ForceMode.Force);
+        rb.MoveRotation(handRot);
+        rb.AddTorque(-rb.angularVelocity);
     }
 
     Vector3 GetHandPosition()
