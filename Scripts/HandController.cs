@@ -13,10 +13,16 @@ public class HandController : UdonSharpBehaviour
     public bool Grabbing = false;
     [Tooltip("The currently grabbed game object")]
     public GameObject GrabbedObject = null;
+    [Tooltip("The parent grabbed object")]
+    public GameObject GrabbedParent = null;
+    [Tooltip("The parent local grab point position")]
+    public Vector3 GrabbedPoint;
+    [Tooltip("Is the currently grabbed object a handle")]
+    public bool GrabbedHandle = false;
     [Header("Scripts")]
-    public PIDController AngularUpPIDController;
-    public PIDController AngularRightPIDController;
-    public PIDController AngularForwardPIDController;
+    public PIDController PIDPosition;
+    public PIDController PIDRotation1;
+    public PIDController PIDRotation2;
     [Header("Settings")]
     public bool LeftHand = false;
     public float GrabRadius = 0.2f;
@@ -28,9 +34,9 @@ public class HandController : UdonSharpBehaviour
     public VRCPlayerApi Player;
     [HideInInspector]
     public VRCPlayerApi.TrackingData HandTrackingData;
+
     void Start()
     {
-        GrabLayerMask = LayerMask.GetMask("GunHandle");
         Player = Networking.LocalPlayer;
         HandTrackingData = Player.GetTrackingData(LeftHand ? VRCPlayerApi.TrackingDataType.LeftHand : VRCPlayerApi.TrackingDataType.RightHand);
     }
@@ -42,7 +48,10 @@ public class HandController : UdonSharpBehaviour
             GrabbedObject = null;
             return;
         }
-        GrabbedObject = TryGrab();
+        if (!TryGrab())
+        {
+            return;
+        }
         ApplyGrab();
     }
 
@@ -65,41 +74,41 @@ public class HandController : UdonSharpBehaviour
             return;
         }
         // TODO other logic for general purpose grabbing instead of just handles
-        ApplyHandleGrab();
+
+        if (GrabbedHandle)
+        {
+            ApplyHandleGrab();
+        }
     }
 
     void ApplyHandleGrab()
     {
-        var handleTransform = GrabbedObject.transform;
-        var rb = GrabbedObject.transform.root.GetComponent<Rigidbody>();
-        var offset = handleTransform.position - rb.transform.position;
+        var rb = GrabbedParent.GetComponent<Rigidbody>();
+        var point = GrabbedParent.transform.TransformPoint(GrabbedPoint);
+        var handPos = GetHandPosition();
+        var handRot = GetHandRotation();
+
 
         // position
-        rb.MovePosition(GetHandPosition() - offset);
-        rb.AddForce(-Physics.gravity * rb.mass, ForceMode.Force);
+        // remove all velocity
+        rb.AddForce(-rb.velocity, ForceMode.VelocityChange);
+        rb.AddForce(-Physics.gravity, ForceMode.Acceleration);
+        rb.AddForce(PIDPosition.CorrectionV3(handPos, point, Time.deltaTime), ForceMode.Acceleration);
 
         // rotation
-        var expFor = GetHandRotation() * Vector3.forward;
-        var curFor = rb.transform.forward;
+        var rotationChange = handRot * Quaternion.Inverse(rb.transform.rotation);
 
-        var expUp = Vector3.Cross(Vector3.Cross(expFor, Vector3.up), Vector3.up);
-        var curUp = Vector3.Cross(Vector3.Cross(curFor, Vector3.up), Vector3.up);
-        var expRight = Vector3.Cross(Vector3.Cross(expFor, Vector3.right), Vector3.right);
-        var curRight = Vector3.Cross(Vector3.Cross(curFor, Vector3.right), Vector3.right);
-        var expForward = Vector3.Cross(Vector3.Cross(expFor, Vector3.forward), Vector3.forward);
-        var curForward = Vector3.Cross(Vector3.Cross(curFor, Vector3.forward), Vector3.forward);
+        rotationChange.ToAngleAxis(out float angle, out Vector3 axis);
 
-        CorrectHandleAngle(AngularUpPIDController, rb, expUp, curUp);
-        CorrectHandleAngle(AngularRightPIDController, rb, expRight, curRight);
-        CorrectHandleAngle(AngularForwardPIDController, rb, expForward, curForward);
-        rb.AddTorque(-rb.angularVelocity);
-    }
+        if (Mathf.Approximately(angle, 0))
+        {
+            return; // no need
+        }
 
-    private void CorrectHandleAngle(PIDController PIDController, Rigidbody rb, Vector3 current, Vector3 expected)
-    {
-        Vector3 correction = PIDController.CorrectionV3(expected, current, Time.deltaTime);
-        correction = Vector3.Cross(current, expected) * correction.magnitude;
-        rb.AddTorque(correction);
+        angle *= Mathf.Deg2Rad;
+
+        var target = axis * PIDRotation1.CorrectionFloat(0, angle, Time.deltaTime);
+        rb.AddTorque(target, ForceMode.Force);
     }
 
     Vector3 GetHandPosition()
@@ -120,17 +129,34 @@ public class HandController : UdonSharpBehaviour
         return HandTrackingData.rotation;
     }
 
-    GameObject TryGrab()
+    bool TryGrab()
     {
         Collider[] colliders = Physics.OverlapSphere(GetHandPosition(), GrabRadius, GrabLayerMask, QueryTriggerInteraction.UseGlobal);
         if (colliders.Length == 0)
         {
-            return null;
+            GrabbedObject = null;
+            return false;
         }
         foreach (var collider in colliders)
         {
-            return collider.gameObject;
+            var Grabbable = collider.gameObject.GetComponentInParent<Grabbable>();
+            if (Grabbable == null)
+            {
+                GrabbedParent = null;
+                GrabbedObject = null;
+                continue;
+            }
+            GrabbedParent = Grabbable.gameObject;
+            GrabbedObject = collider.gameObject;
+            GrabbedHandle = Grabbable.IsHandle(GrabbedObject);
+            GrabbedPoint = GrabbedParent.transform.InverseTransformPoint(GrabbedHandle ? GrabbedObject.transform.position : transform.position);
+            return true;
         }
-        return null;
+        return false;
+    }
+
+    private void debugDrawVector(Vector3 vector, Vector3 pos, Color color, float len = 0.2f)
+    {
+        Debug.DrawLine(pos, pos + vector, color);
     }
 }

@@ -15,6 +15,10 @@ public class PIDController : UdonSharpBehaviour
     public Vector3 integralV3;
     [HideInInspector]
     public Vector3 lastErrorV3;
+    [HideInInspector]
+    public float integralFloat;
+    [HideInInspector]
+    public float lastErrorFloat;
 
     public void SetPID(float newP, float newI, float newD)
     {
@@ -30,6 +34,14 @@ public class PIDController : UdonSharpBehaviour
         var deriv = (error - lastErrorV3) / timeFrame;
         lastErrorV3 = error;
         return error * P + integralV3 * I + deriv * D;
+    }
+    public float CorrectionFloat(float expected, float current, float timeFrame)
+    {
+        var error = (current - expected) * -1;
+        integralFloat += error * timeFrame;
+        var deriv = (error - lastErrorFloat) / timeFrame;
+        lastErrorFloat = error;
+        return error * P + integralFloat * I + deriv * D;
     }
 
 }
