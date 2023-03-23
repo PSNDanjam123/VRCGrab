@@ -25,8 +25,8 @@ public class HandController : UdonSharpBehaviour
     public PIDController PIDRotation2;
     [Header("Settings")]
     public bool LeftHand = false;
-    public float GrabRadius = 0.2f;
-    public LayerMask GrabLayerMask;
+    public float GrabRadius = 0.1f;
+
     [Header("Debug")]
     [Tooltip("Assign an empty game object for local debug testing")]
     public GameObject DebugGameObject = null;
@@ -40,14 +40,15 @@ public class HandController : UdonSharpBehaviour
     void Start()
     {
         Player = Networking.LocalPlayer;
-        HandPosition = Player.GetBonePosition(LeftHand ? HumanBodyBones.LeftHand : HumanBodyBones.RightHand);
-        HandRotation = Player.GetBoneRotation(LeftHand ? HumanBodyBones.LeftHand : HumanBodyBones.RightHand);
     }
 
     void FixedUpdate()
     {
-        HandPosition = Player.GetBonePosition(LeftHand ? HumanBodyBones.LeftHand : HumanBodyBones.RightHand);
-        HandRotation = Player.GetBoneRotation(LeftHand ? HumanBodyBones.LeftHand : HumanBodyBones.RightHand);
+        HandPosition = Player.GetTrackingData(LeftHand ? VRCPlayerApi.TrackingDataType.LeftHand : VRCPlayerApi.TrackingDataType.RightHand).position;
+        HandRotation = Player.GetTrackingData(LeftHand ? VRCPlayerApi.TrackingDataType.LeftHand : VRCPlayerApi.TrackingDataType.RightHand).rotation;
+        debugDrawVector(HandRotation * Vector3.up, HandPosition, Color.red); // right
+        debugDrawVector(HandRotation * Vector3.right, HandPosition, Color.green);   // forward
+        debugDrawVector(HandRotation * Vector3.forward, HandPosition, Color.blue);  // up
         if (m_DemoSphere != null)
         {
             m_DemoSphere.transform.position = GetHandPosition();
@@ -60,7 +61,7 @@ public class HandController : UdonSharpBehaviour
             GrabbedObject = null;
             return;
         }
-        if (!TryGrab())
+        if (GrabbedObject == null && !TryGrab())
         {
             color.r = 1;
             m_DemoSphere.GetComponent<MeshRenderer>().material.SetColor("_Color", color);
@@ -69,6 +70,14 @@ public class HandController : UdonSharpBehaviour
         color.g = 1;
         m_DemoSphere.GetComponent<MeshRenderer>().material.SetColor("_Color", color);
         ApplyGrab();
+    }
+
+    public override void InputUse(bool value, UdonInputEventArgs args)
+    {
+        if (!Player.IsUserInVR())
+        {
+            Grabbing = value;
+        }
     }
 
     public override void InputGrab(bool value, UdonInputEventArgs args)
@@ -131,20 +140,28 @@ public class HandController : UdonSharpBehaviour
         {
             return DebugGameObject.transform.rotation;
         }
-        return HandRotation;
+        var rot = HandRotation;
+        // VR fix
+        if (Player.IsUserInVR())
+        {
+            rot = Quaternion.LookRotation(rot * Vector3.right, rot * Vector3.forward);
+        }
+        else
+        {
+            var headPosition = Player.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position;
+            var headRotation = Player.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation;
+            Vector3 headLook = headRotation * Vector3.forward;
+            var lookPoint = headRotation * Vector3.forward * 1000;
+            var vector = lookPoint - headPosition;
+            rot = Quaternion.LookRotation(vector, headRotation * Vector3.up);
+        }
+        return rot;
     }
 
     bool TryGrab()
     {
         Player.PlayHapticEventInHand(LeftHand ? VRC_Pickup.PickupHand.Left : VRC_Pickup.PickupHand.Right, 0.1f, 0.05f, 0.1f);
-        debugDrawVector(Vector3.up, GetHandPosition(), Color.red, GrabRadius);
-        debugDrawVector(-Vector3.up, GetHandPosition(), Color.red, GrabRadius);
-        debugDrawVector(Vector3.right, GetHandPosition(), Color.green, GrabRadius);
-        debugDrawVector(-Vector3.right, GetHandPosition(), Color.green, GrabRadius);
-        debugDrawVector(Vector3.forward, GetHandPosition(), Color.blue, GrabRadius);
-        debugDrawVector(-Vector3.forward, GetHandPosition(), Color.blue, GrabRadius);
-
-        Collider[] colliders = Physics.OverlapSphere(GetHandPosition(), GrabRadius, GrabLayerMask, QueryTriggerInteraction.UseGlobal);
+        Collider[] colliders = Physics.OverlapSphere(GetHandPosition(), GrabRadius);
         if (colliders.Length == 0)
         {
             GrabbedObject = null;
@@ -152,6 +169,10 @@ public class HandController : UdonSharpBehaviour
         }
         foreach (var collider in colliders)
         {
+            if (collider == null)
+            {
+                continue;
+            }
             var Grabbable = collider.gameObject.GetComponentInParent<Grabbable>();
             if (Grabbable == null)
             {

@@ -59,6 +59,8 @@ MonoBehaviour:
   D: 0.1
   integralV3: {x: 0, y: 0, z: 0}
   lastErrorV3: {x: 0, y: 0, z: 0}
+  integralFloat: 0
+  lastErrorFloat: 0
 --- !u!114 &4491794651588847763
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -142,45 +144,6 @@ MonoBehaviour:
     - Name: Player
       Entry: 6
       Data: 
-    - Name: HandTrackingData
-      Entry: 7
-      Data: VRC.SDKBase.VRCPlayerApi+TrackingData, VRCSDKBase
-    - Name: position
-      Entry: 7
-      Data: UnityEngine.Vector3, UnityEngine.CoreModule
-    - Name: 
-      Entry: 4
-      Data: 0
-    - Name: 
-      Entry: 4
-      Data: 0
-    - Name: 
-      Entry: 4
-      Data: 0
-    - Name: 
-      Entry: 8
-      Data: 
-    - Name: rotation
-      Entry: 7
-      Data: UnityEngine.Quaternion, UnityEngine.CoreModule
-    - Name: 
-      Entry: 4
-      Data: 0
-    - Name: 
-      Entry: 4
-      Data: 0
-    - Name: 
-      Entry: 4
-      Data: 0
-    - Name: 
-      Entry: 4
-      Data: 0
-    - Name: 
-      Entry: 8
-      Data: 
-    - Name: 
-      Entry: 8
-      Data: 
   _udonSharpBackingUdonBehaviour: {fileID: 3675620886948288504}
   Grabbing: 0
   GrabbedObject: {fileID: 0}
@@ -194,8 +157,11 @@ MonoBehaviour:
   GrabRadius: 0.2
   GrabLayerMask:
     serializedVersion: 2
-    m_Bits: 4194304
+    m_Bits: 8192
   DebugGameObject: {fileID: 0}
+  m_DemoSphere: {fileID: 0}
+  HandPosition: {x: 0, y: 0, z: 0}
+  HandRotation: {x: 0, y: 0, z: 0, w: 0}
 --- !u!114 &3675620886948288504
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -281,6 +247,8 @@ MonoBehaviour:
   D: 0.1
   integralV3: {x: 0, y: 0, z: 0}
   lastErrorV3: {x: 0, y: 0, z: 0}
+  integralFloat: 0
+  lastErrorFloat: 0
 --- !u!114 &9138984245392612142
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -399,6 +367,8 @@ MonoBehaviour:
   D: 0.1
   integralV3: {x: 0, y: 0, z: 0}
   lastErrorV3: {x: 0, y: 0, z: 0}
+  integralFloat: 0
+  lastErrorFloat: 0
 --- !u!114 &3703514347344194127
 MonoBehaviour:
   m_ObjectHideFlags: 0
