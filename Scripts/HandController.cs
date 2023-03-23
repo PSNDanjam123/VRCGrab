@@ -11,6 +11,7 @@ public class HandController : UdonSharpBehaviour
     [Header("Info")]
     [Tooltip("Is the player currently trying to grab")]
     public bool Grabbing = false;
+    public GameObject NearestGrabbableObject = null;
     [Tooltip("The currently grabbed game object")]
     public GameObject GrabbedObject = null;
     [Tooltip("The parent grabbed object")]
@@ -26,6 +27,8 @@ public class HandController : UdonSharpBehaviour
     [Header("Settings")]
     public bool LeftHand = false;
     public float GrabRadius = 0.1f;
+    public LayerMask GrabLayerMask;
+    public Vector3 HandleOffset = new Vector3(-38, 0, 0);
 
     [Header("Debug")]
     [Tooltip("Assign an empty game object for local debug testing")]
@@ -46,30 +49,72 @@ public class HandController : UdonSharpBehaviour
     {
         HandPosition = Player.GetTrackingData(LeftHand ? VRCPlayerApi.TrackingDataType.LeftHand : VRCPlayerApi.TrackingDataType.RightHand).position;
         HandRotation = Player.GetTrackingData(LeftHand ? VRCPlayerApi.TrackingDataType.LeftHand : VRCPlayerApi.TrackingDataType.RightHand).rotation;
-        debugDrawVector(HandRotation * Vector3.up, HandPosition, Color.red); // right
-        debugDrawVector(HandRotation * Vector3.right, HandPosition, Color.green);   // forward
-        debugDrawVector(HandRotation * Vector3.forward, HandPosition, Color.blue);  // up
+        HandleGrabbing();
+    }
+
+    public void HandleGrabbing()
+    {
         if (m_DemoSphere != null)
         {
             m_DemoSphere.transform.position = GetHandPosition();
         }
+
+        // demo color config
         var color = Color.black;
         color.a = 0.2f;
+
+        // check for nearest grabbable object
+        var newGrabbableObject = GetNearestGrabbableObject();
+        if (newGrabbableObject != NearestGrabbableObject)
+        {
+            InputManager.EnableObjectHighlight(NearestGrabbableObject, false);
+            NearestGrabbableObject = newGrabbableObject;
+        }
+
+        // clean up if no longer grabbing
         if (!Grabbing)
         {
             color.b = 1;
+            if (GrabbedObject != null)
+            {
+                InputManager.EnableObjectHighlight(GrabbedObject, false);
+            }
             GrabbedObject = null;
+            if (NearestGrabbableObject != null)
+            {
+                InputManager.EnableObjectHighlight(NearestGrabbableObject, true);
+            }
             return;
         }
-        if (GrabbedObject == null && !TryGrab())
+
+        // if grabbing an object already then apply grab
+        if (GrabbedObject != null)
         {
+            ApplyGrab();
+            return;
+        }
+
+        // If no nearest object then nothing to do
+        if (NearestGrabbableObject == null)
+        {
+            // turn debug to red if nothing to grab
             color.r = 1;
+            color.g = 0;
             m_DemoSphere.GetComponent<MeshRenderer>().material.SetColor("_Color", color);
             return;
         }
+
+        // grab the nearest object
+        var Grabbable = NearestGrabbableObject.GetComponentInParent<Grabbable>();
+        GrabbedParent = Grabbable.gameObject;
+        GrabbedObject = NearestGrabbableObject;
+        GrabbedHandle = Grabbable.IsHandle(GrabbedObject);
+        GrabbedPoint = GrabbedParent.transform.InverseTransformPoint(GrabbedHandle ? GrabbedObject.transform.position : transform.position);
+
+        // turn debug to green on grab
+        color.r = 0;
         color.g = 1;
         m_DemoSphere.GetComponent<MeshRenderer>().material.SetColor("_Color", color);
-        ApplyGrab();
     }
 
     public override void InputUse(bool value, UdonInputEventArgs args)
@@ -145,6 +190,7 @@ public class HandController : UdonSharpBehaviour
         if (Player.IsUserInVR())
         {
             rot = Quaternion.LookRotation(rot * Vector3.right, rot * Vector3.forward);
+            rot *= Quaternion.Euler(HandleOffset);
         }
         else
         {
@@ -155,38 +201,27 @@ public class HandController : UdonSharpBehaviour
             var vector = lookPoint - headPosition;
             rot = Quaternion.LookRotation(vector, headRotation * Vector3.up);
         }
+
         return rot;
     }
 
-    bool TryGrab()
+    GameObject GetNearestGrabbableObject()
     {
-        Player.PlayHapticEventInHand(LeftHand ? VRC_Pickup.PickupHand.Left : VRC_Pickup.PickupHand.Right, 0.1f, 0.05f, 0.1f);
-        Collider[] colliders = Physics.OverlapSphere(GetHandPosition(), GrabRadius);
+        Collider[] colliders = Physics.OverlapSphere(GetHandPosition(), GrabRadius, GrabLayerMask);
         if (colliders.Length == 0)
         {
-            GrabbedObject = null;
-            return false;
+            return null;
         }
         foreach (var collider in colliders)
         {
-            if (collider == null)
+            var grabbable = collider.gameObject.GetComponentInParent<Grabbable>();
+            if (grabbable == null)
             {
                 continue;
             }
-            var Grabbable = collider.gameObject.GetComponentInParent<Grabbable>();
-            if (Grabbable == null)
-            {
-                GrabbedParent = null;
-                GrabbedObject = null;
-                continue;
-            }
-            GrabbedParent = Grabbable.gameObject;
-            GrabbedObject = collider.gameObject;
-            GrabbedHandle = Grabbable.IsHandle(GrabbedObject);
-            GrabbedPoint = GrabbedParent.transform.InverseTransformPoint(GrabbedHandle ? GrabbedObject.transform.position : transform.position);
-            return true;
+            return collider.gameObject;
         }
-        return false;
+        return null;
     }
 
     private void debugDrawVector(Vector3 vector, Vector3 pos, Color color, float len = 0.2f)

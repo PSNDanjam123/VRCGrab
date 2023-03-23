@@ -154,10 +154,11 @@ MonoBehaviour:
   PIDRotation1: {fileID: 983681088920364682}
   PIDRotation2: {fileID: 8779497102245266114}
   LeftHand: 0
-  GrabRadius: 0.2
+  GrabRadius: 0.1
   GrabLayerMask:
     serializedVersion: 2
     m_Bits: 8192
+  HandleOffset: {x: -38, y: 0, z: 0}
   DebugGameObject: {fileID: 0}
   m_DemoSphere: {fileID: 0}
   HandPosition: {x: 0, y: 0, z: 0}
