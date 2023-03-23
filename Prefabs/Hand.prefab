@@ -146,6 +146,7 @@ MonoBehaviour:
       Data: 
   _udonSharpBackingUdonBehaviour: {fileID: 3675620886948288504}
   Grabbing: 0
+  NearestGrabbableObject: {fileID: 0}
   GrabbedObject: {fileID: 0}
   GrabbedParent: {fileID: 0}
   GrabbedPoint: {x: 0, y: 0, z: 0}
@@ -243,9 +244,9 @@ MonoBehaviour:
     PrefabModifications: []
     SerializationNodes: []
   _udonSharpBackingUdonBehaviour: {fileID: 9138984245392612142}
-  P: 3000
+  P: 10000
   I: 0
-  D: 0.1
+  D: 0.255
   integralV3: {x: 0, y: 0, z: 0}
   lastErrorV3: {x: 0, y: 0, z: 0}
   integralFloat: 0

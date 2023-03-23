@@ -121,7 +121,7 @@ public class HandController : UdonSharpBehaviour
     {
         if (!Player.IsUserInVR())
         {
-            Grabbing = value;
+            Grabbing = !Grabbing;
         }
     }
 
