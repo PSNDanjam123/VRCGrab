@@ -54,9 +54,9 @@ MonoBehaviour:
     PrefabModifications: []
     SerializationNodes: []
   _udonSharpBackingUdonBehaviour: {fileID: 4491794651588847763}
-  P: 30
-  I: 0.01
-  D: 0.4
+  P: 20
+  I: 0.02
+  D: 0.3
   integralV3: {x: 0, y: 0, z: 0}
   lastErrorV3: {x: 0, y: 0, z: 0}
   integralFloat: 0
@@ -141,9 +141,9 @@ MonoBehaviour:
     PrefabModifications: []
     SerializationNodes: []
   _udonSharpBackingUdonBehaviour: {fileID: 182968947846325352}
-  P: 30
-  I: 0.01
-  D: 0.4
+  P: 20
+  I: 0.02
+  D: 0.3
   integralV3: {x: 0, y: 0, z: 0}
   lastErrorV3: {x: 0, y: 0, z: 0}
   integralFloat: 0
@@ -453,9 +453,9 @@ MonoBehaviour:
     PrefabModifications: []
     SerializationNodes: []
   _udonSharpBackingUdonBehaviour: {fileID: 3703514347344194127}
-  P: 30
-  I: 0.01
-  D: 0.4
+  P: 20
+  I: 0.02
+  D: 0.3
   integralV3: {x: 0, y: 0, z: 0}
   lastErrorV3: {x: 0, y: 0, z: 0}
   integralFloat: 0

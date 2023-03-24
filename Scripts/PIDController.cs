@@ -41,6 +41,10 @@ public class PIDController : UdonSharpBehaviour
         integralFloat += error * timeFrame;
         var deriv = (error - lastErrorFloat) / timeFrame;
         lastErrorFloat = error;
+        if (Mathf.Abs(error) < 0.01f)
+        {
+            return 0.0f;
+        }
         return error * P + integralFloat * I + deriv * D;
     }
 

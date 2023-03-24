@@ -164,30 +164,23 @@ public class HandController : UdonSharpBehaviour
         // remove all velocity
         rb.AddForce(-rb.velocity, ForceMode.VelocityChange);
         rb.AddForce(-Physics.gravity, ForceMode.Acceleration);
-        rb.AddForce(PIDPosition.CorrectionV3(handPos, point, Time.deltaTime), ForceMode.Acceleration);
+        rb.AddForce(PIDPosition.CorrectionV3(handPos, point, Time.fixedDeltaTime), ForceMode.Acceleration);
 
         // rotation
-        var handForward = handRot * Vector3.forward;
-        var objForward = rb.transform.forward;
-        var corrForward = PIDRotation1.CorrectionV3(objForward, handForward, Time.deltaTime);
-        corrForward = Vector3.Cross(corrForward, objForward) * corrForward.magnitude;
-        rb.AddTorque(corrForward, ForceMode.Acceleration);
+        var c = GetRotationCorrect(PIDRotation1, GrabbedParent.transform.rotation, GrabbedParent.transform.forward, handRot * Vector3.forward);
+        c += GetRotationCorrect(PIDRotation2, GrabbedParent.transform.rotation, GrabbedParent.transform.up, handRot * Vector3.up);
+        Quaternion q = GrabbedParent.transform.rotation * rb.inertiaTensorRotation;
+        var T = q * Vector3.Scale(rb.inertiaTensor, (Quaternion.Inverse(q) * c));
+        rb.AddTorque(T, ForceMode.Impulse);
+    }
 
-        var handUp = handRot * Vector3.up;
-        var objUp = rb.transform.up;
-        var corrUp = PIDRotation2.CorrectionV3(objUp, handUp, Time.deltaTime);
-        corrUp = Vector3.Cross(corrUp, objUp) * corrUp.magnitude;
-        rb.AddTorque(corrUp, ForceMode.Acceleration);
-
-        // rb.AddTorque(new Vector3(0, 100000, 0), ForceMode.Acceleration);
-
-        var handRight = handRot * Vector3.right;
-        var objRight = rb.transform.right;
-        var corrRight = PIDRotation2.CorrectionV3(objRight, handRight, Time.deltaTime);
-        corrRight = Vector3.Cross(corrRight, objRight) * corrRight.magnitude;
-        //rb.AddTorque(corrRight, ForceMode.Acceleration);
-
-        rb.AddTorque(-rb.angularVelocity);
+    Vector3 GetRotationCorrect(PIDController pIDController, Quaternion currentRot, Vector3 current, Vector3 expected)
+    {
+        Vector3 tV = Vector3.Cross(current.normalized, expected.normalized);
+        float theta = Mathf.Asin(tV.magnitude);
+        float pid = pIDController.CorrectionFloat(0.0f, theta, Time.fixedDeltaTime);
+        Vector3 r = tV.normalized * pid;
+        return currentRot * (Quaternion.Inverse(currentRot) * r);
     }
 
     Vector3 GetHandPosition()
