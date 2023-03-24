@@ -210,9 +210,9 @@ public class HandController : UdonSharpBehaviour
             var headPosition = Player.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position;
             var headRotation = Player.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation;
             Vector3 headLook = headRotation * Vector3.forward;
-            var lookPoint = headRotation * Vector3.forward * 1000;
+            var lookPoint = -headLook * 1000;
             var vector = lookPoint - headPosition;
-            rot = Quaternion.LookRotation(vector, headRotation * Vector3.up);
+            rot = Quaternion.LookRotation(vector, headRotation * -Vector3.up);
         }
 
         return rot;
