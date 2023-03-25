@@ -167,20 +167,24 @@ public class HandController : UdonSharpBehaviour
         rb.AddForce(PIDPosition.CorrectionV3(handPos, point, Time.fixedDeltaTime), ForceMode.Acceleration);
 
         // rotation
-        var c = GetRotationCorrect(PIDRotation1, GrabbedParent.transform.rotation, GrabbedParent.transform.forward, handRot * Vector3.forward);
-        c += GetRotationCorrect(PIDRotation2, GrabbedParent.transform.rotation, GrabbedParent.transform.up, handRot * Vector3.up);
-        Quaternion q = GrabbedParent.transform.rotation * rb.inertiaTensorRotation;
-        var T = q * Vector3.Scale(rb.inertiaTensor, (Quaternion.Inverse(q) * c));
-        rb.AddTorque(T, ForceMode.Impulse);
+        // cancel out rogue rotations before applying the next
+        rb.AddTorque(-rb.angularVelocity, ForceMode.Acceleration);
+
+        // apply fixing torques
+        var Tf = GetRotationCorrect(PIDRotation1, rb, rb.transform.forward, handRot * Vector3.forward);
+        rb.AddTorque(Tf, ForceMode.Acceleration);
+        var Tr = GetRotationCorrect(PIDRotation1, rb, rb.transform.right, handRot * Vector3.right);
+        rb.AddTorque(Tr, ForceMode.Acceleration);
     }
 
-    Vector3 GetRotationCorrect(PIDController pIDController, Quaternion currentRot, Vector3 current, Vector3 expected)
+    Vector3 GetRotationCorrect(PIDController pIDController, Rigidbody rb, Vector3 current, Vector3 expected)
     {
-        Vector3 tV = Vector3.Cross(current.normalized, expected.normalized);
-        float theta = Mathf.Asin(tV.magnitude);
+        Vector3 x = Vector3.Cross(current.normalized, expected.normalized);
+        float theta = Mathf.Asin(x.magnitude);
         float pid = pIDController.CorrectionFloat(0.0f, theta, Time.fixedDeltaTime);
-        Vector3 r = tV.normalized * pid;
-        return currentRot * (Quaternion.Inverse(currentRot) * r);
+        Vector3 w = x.normalized * pid;
+        Quaternion q = rb.transform.rotation * rb.inertiaTensorRotation;
+        return q * Vector3.Scale(rb.inertiaTensor, (Quaternion.Inverse(q) * w));
     }
 
     Vector3 GetHandPosition()
@@ -210,9 +214,9 @@ public class HandController : UdonSharpBehaviour
             var headPosition = Player.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position;
             var headRotation = Player.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation;
             Vector3 headLook = headRotation * Vector3.forward;
-            var lookPoint = -headLook * 1000;
+            var lookPoint = headLook * 1000;
             var vector = lookPoint - headPosition;
-            rot = Quaternion.LookRotation(vector, headRotation * -Vector3.up);
+            rot = Quaternion.LookRotation(vector, headRotation * Vector3.up);
         }
 
         return rot;
